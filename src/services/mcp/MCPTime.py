@@ -1,50 +1,54 @@
-import asyncio
-from langchain_core.tools import BaseTool
-from langchain_mcp_adapters.client import MultiServerMCPClient  
-from typing import List
-from config.settings import OPENAI_BASE_URL, OPENAI_API_KEY
-from langchain.agents import create_agent
-from langchain.chat_models import init_chat_model
-from langchain.messages import HumanMessage, AIMessage, SystemMessage
+"""
+MCP Time - 时间服务
+
+通过 MCP 协议提供时间相关功能：
+
+1. 当前时间获取
+   - 获取标准化的当前时间
+   - 支持多种时间格式
+   - 时区处理
+
+2. 时间格式化
+   - ISO 8601 格式
+   - 自定义格式支持
+   - 相对时间描述
+
+3. 时间计算
+   - 日期差值计算
+   - 时间范围生成
+   - 论文发表时间处理
+"""
+
+from typing import Optional
+from datetime import datetime
 
 
 class MCPTime:
+    """MCP 时间服务"""
+    
     def __init__(self):
-        self.client_mcp_time = MultiServerMCPClient(
-            {
-                "time-server": {
-                    "transport": "stdio",
-                    "args": [
-                        "mcp-server-time"
-                    ],
-                    "command": "uvx"
-                }
-            }
-        )
-
-    async def get_mcp_tools(self) -> List[BaseTool]:
-        tools = await self.client_mcp_time.get_tools()
-        return tools
-
-
-async def test_mcp_time():
-    """测试 MCPTime 获取工具列表"""
-    mcp_time = MCPTime()
-    tools = await mcp_time.get_mcp_tools()
+        self.mcp_client = None
     
-    print(f"共发现 {len(tools)} 个工具:\n")
-    for tool in tools:
-        print(f"  - {tool.name}: {tool.description}")
+    async def initialize(self) -> None:
+        """初始化 MCP 客户端"""
+        pass
     
-    agent = create_agent(
-        model = init_chat_model(model="gpt-4o-mini", base_url=OPENAI_BASE_URL, api_key=OPENAI_API_KEY),
-        tools = tools
-    )
-
-    result = await agent.ainvoke(
-        input = {"messages": [HumanMessage(content="""
-            获取一下现在的北京时间是多少？
-        """)]}
-    )
-    from pprint import pprint
-    pprint(result)
+    async def get_current_time(self, timezone: str = "UTC") -> datetime:
+        """获取当前时间"""
+        pass
+    
+    async def get_formatted_time(self, format_str: str = "%Y-%m-%d") -> str:
+        """获取格式化的当前时间"""
+        pass
+    
+    def parse_date(self, date_str: str) -> Optional[datetime]:
+        """解析日期字符串"""
+        pass
+    
+    def format_date(self, dt: datetime, format_str: str = "%Y-%m-%d") -> str:
+        """格式化日期"""
+        pass
+    
+    async def close(self) -> None:
+        """关闭 MCP 客户端"""
+        pass

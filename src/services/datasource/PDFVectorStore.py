@@ -1,98 +1,97 @@
 """
-构建向量数据库
+PDF Vector Store - PDF 文档向量存储服务
+
+负责 PDF 文档的解析、分块和向量化存储：
+
+1. 文档解析
+   - 使用 PyPDFLoader 加载 PDF 文件
+   - 提取文本内容和页码信息
+   - 保留文档结构元数据
+
+2. 智能分块 (Chunking)
+   - 基于 RecursiveCharacterTextSplitter 进行语义分块
+   - 可配置 chunk_size 和 chunk_overlap
+   - 保留章节和页码上下文
+
+3. 向量化存储
+   - 使用 OpenAI Embeddings 进行向量化
+   - 基于 Chroma 进行持久化存储
+   - 支持增量添加文档
+
+4. 检索能力
+   - 语义相似度检索 (similarity_search)
+   - 支持 top-k 和相似度阈值配置
+   - 返回文档内容和来源信息
+
+5. 元数据管理
+   - 记录文档来源（文件名、路径）
+   - 记录分块信息（页码、位置）
+   - 支持按元数据过滤检索
 """
-from typing import List
-# import subprocess
+
+from typing import List, Optional
 from pathlib import Path
-from loguru import logger
-from langchain_openai import OpenAIEmbeddings
-from langchain_chroma import Chroma
 from langchain_core.documents import Document
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_text_splitters import RecursiveCharacterTextSplitter
-from config.settings import project_root
 
 
-class VectorStore:
-
-    def __init__(self, pdf_path: Path):
-        self.vector_store = Chroma(
-            collection_name = "pdf_collection",
-            embedding_function = OpenAIEmbeddings(),
-            # 指定存储路径后会自动进行持久化
-            persist_directory = project_root() / "assets" / "vector_store"
-        )
-
-    def pdf2splits(self, pdf_path: Path) -> List[Document]:
-        """ 加载 pdf 文件
-        
-        1. 使用 langchain_community.document_loaders import PyPDFLoader 加载 pdf 文件
-        2. 使用 langchain_text_splitters.RecursiveCharacterTextSplitter 对文档进行分块
-
+class PDFVectorStore:
+    """PDF 文档向量存储服务"""
+    
+    def __init__(self, persist_directory: str = None):
+        self.persist_directory = persist_directory
+        self.vector_store = None
+        self.embeddings = None
+    
+    def initialize(self) -> None:
+        """初始化向量存储和 Embedding 模型"""
+        pass
+    
+    def add_document(self, pdf_path: Path, metadata: dict = None) -> List[str]:
         """
-        # 1. 使用 langchain_community.document_loaders import PyPDFLoader 加载 pdf 文件
-        loader = PyPDFLoader(str(pdf_path))
-        docs = loader.load()
-
-        # 2. 使用 langchain_text_splitters.RecursiveCharacterTextSplitter 对文档进行分块
-        text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size = 1000,
-            chunk_overlap = 200
-        )
-        splits = text_splitter.split_documents(docs)
-
-        logger.info(f"分块后 splits 数量：{len(splits)}")
-
-        # 3. 返回分块后的 Document 对象列表
-        return splits
-    
-    def join_vector_store(self, splits: List[Document]) -> List[str]:
-        """ 将分块后的 Document 对象列表加入向量数据库 """
-        ids = self.vector_store.add_documents(splits)
-        logger.info(f"加入向量数据库成功，文档 ID: {ids}")
-        logger.info(f"向量数据库已自动持久化到: {project_root() / 'assets' / 'vector_store'}")
-        return ids
-    
-    def search_vector_store(self, query: str) -> List[Document]:
-        """ 在向量数据库中搜索相似的 Document 对象 """
-        return self.vector_store.similarity_search(query)
+        添加 PDF 文档到向量库
         
-
-def test_vector_store():
-    pdf_path = project_root() / "assets" / "pdf" / "xianfa.pdf"
+        Args:
+            pdf_path: PDF 文件路径
+            metadata: 附加元数据（标题、作者等）
+            
+        Returns:
+            文档块 ID 列表
+        """
+        pass
     
-    # 检查 PDF 文件是否存在
-    if not pdf_path.exists():
-        logger.error(f"PDF 文件不存在: {pdf_path}")
-        exit(1)
+    def pdf_to_splits(self, pdf_path: Path) -> List[Document]:
+        """
+        解析 PDF 并分块
+        
+        Args:
+            pdf_path: PDF 文件路径
+            
+        Returns:
+            分块后的 Document 列表
+        """
+        pass
     
-    logger.info(f"开始处理 PDF 文件: {pdf_path}")
+    def search(self, query: str, k: int = 5) -> List[Document]:
+        """
+        语义检索
+        
+        Args:
+            query: 查询文本
+            k: 返回结果数量
+            
+        Returns:
+            相关文档列表
+        """
+        pass
     
-    # 创建 VectorStore 实例
-    vector_store = VectorStore(pdf_path)
+    def search_with_score(self, query: str, k: int = 5) -> List[tuple]:
+        """带相似度分数的检索"""
+        pass
     
-    # 加载并分块 PDF
-    logger.info("开始加载和分块 PDF 文件...")
-    splits = vector_store.pdf2splits(pdf_path)
+    def delete_document(self, doc_id: str) -> bool:
+        """删除指定文档"""
+        pass
     
-    # 将分块加入向量数据库
-    logger.info("开始将文档加入向量数据库...")
-    vector_store.join_vector_store(splits)
-    
-    # 测试检索功能
-    test_queries = [
-        "中华人民共和国宪法的主要内容是什么？",
-        "公民的基本权利和义务有哪些？",
-        "国家机构的组成和职责是什么？",
-        "宪法的基本原则是什么？"
-    ]
-    
-    logger.info("开始测试检索功能...")
-    for query in test_queries:
-        logger.info(f"\n查询: {query}")
-        results = vector_store.search_vector_store(query)
-        logger.info(f"检索到 {len(results)} 条相关文档")
-        for i, doc in enumerate(results[:3], 1):  # 只显示前3条
-            logger.info(f"结果 {i}: {doc.page_content[:200]}...")
-    
-    logger.info("测试完成！")
+    def get_document_count(self) -> int:
+        """获取文档总数"""
+        pass
