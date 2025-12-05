@@ -9,18 +9,42 @@ html 处理工具包
 
 最终输出 splits[Document] 列表，可以直接添加到向量存储库中。
 
+# 结构说明
+
+两个主要函数：
+
+1. get_text_content(url: str) -> str | None:
+    获取 url 的 html 内容，并返回清洗后的文本。
+
+2. get_splits(text: str) -> List[Document]:
+    对文本进行两阶段分块处理，最终输出 splits[Document] 列表，可以直接添加到向量存储库中。
+
 
 # 依赖工具：
 
 (uv add trafilatura)[https://github.com/adbar/trafilatura]
 
 """
-from trafilatura import extract, ExtractionConfig
+from trafilatura import extract
 import requests
 from typing import List
+from dataclasses import dataclass
 from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from abc_toolkit import BaseToolkit
+from .abc_toolkit import BaseToolkit
+from loguru import logger
+
+
+@dataclass
+class HTMLExtractionConfig:
+    """HTML 提取配置"""
+    include_comments: bool = False
+    include_tables: bool = False
+    include_images: bool = False
+    include_links: bool = False
+    favor_recall: bool = True
+    with_metadata: bool = True
+    output_format: str = 'txt'
 
 
 class HTMLToolkit(BaseToolkit)  :
@@ -28,13 +52,6 @@ class HTMLToolkit(BaseToolkit)  :
     def __init__(self):
         self.url = None
 
-    def get_text_content(self, url: str) -> str | None:
-        """ 获取 url 的 html 内容 """
-        self.url = url
-        html_text = self._get_response_text()
-        text = self._extract_main_text(html_text)
-        return text
-    
     def _get_response_text(self, timeout: int = 10) -> str | None:
         """ 获取 url 的 html 内容 """
         headers = {
@@ -54,29 +71,35 @@ class HTMLToolkit(BaseToolkit)  :
         resp.raise_for_status()
         return resp.text
     
-    def _extract_main_text(self, html_text: str, config: ExtractionConfig = None) -> str | None:
+    def _extract_main_text(self, html_text: str, config: HTMLExtractionConfig = None) -> str | None:
         """ 提取 html 内容中的主要文本 """
         if not html_text:
             return None
         
         if not config:
-            config = ExtractionConfig(
-                include_comments=False,
-                include_tables=False,
-                favor_recall=True,
-                with_metadata=True,
-            )
+            config = HTMLExtractionConfig()
 
         text = extract(
-            html_text, 
-            config = config, 
-            url = self.url
+            html_text,
+            url=self.url,
+            include_comments=config.include_comments,
+            include_tables=config.include_tables,
+            include_images=config.include_images,
+            include_links=config.include_links,
+            favor_recall=config.favor_recall,
+            with_metadata=config.with_metadata,
+            output_format=config.output_format
         )
 
         return text
     
-    def get_splits(self, text: str) -> List[Document]:
+    def get_splits(self, url: str) -> List[Document]:
         """ 对文本进行两阶段分块处理 """
+        self.url = url
+
+        html_text = self._get_response_text()
+        text = self._extract_main_text(html_text)
+
         # 1. 按段落分割
         paragraphs = self._split_by_paragraphs(text)
         
@@ -89,6 +112,8 @@ class HTMLToolkit(BaseToolkit)  :
         # 4. 二次分块
         final_splits = self._split_documents(paragraph_docs)
         
+        logger.info(f"HTML docs splitted. splits length: {len(final_splits)}")
+
         return final_splits
     
     def _split_by_paragraphs(self, text: str) -> List[str]:
