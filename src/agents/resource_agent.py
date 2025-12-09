@@ -5,7 +5,7 @@
 
 """
 from langchain_core.tools import tool
-from .worker_base import BaseWorker
+from .agent_base import BaseAgent
 from langchain.agents import create_agent
 from langchain.chat_models import init_chat_model
 from langchain_chroma import Chroma
@@ -35,7 +35,7 @@ sys_prompt = """
 
 """
 
-class ResourceWorker(BaseWorker):
+class ResourceAgent(BaseAgent):
     def __init__(self, vector_store: Chroma):
         self.vector_store = vector_store
         
