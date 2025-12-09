@@ -27,7 +27,6 @@ Master Agent 作为用户的直接交互入口，负责：
 | **Retrieval Worker** | 文献检索、向量搜索、上下文召回 | 用户提问涉及已存储文献内容 |
 | **SQL Worker** | 数据库查询、论文元数据检索、实验数据管理 | 需要结构化数据支持时 |
 | **WebSearch Worker** | 网络搜索、论文信息获取、学术资源发现 | 本地知识库不足或需要最新信息时 |
-| **Generation Worker** | 答案生成、文献综述、研究建议 | 需要生成总结性或创造性内容时 |
 
 ### 1.3 交互流程
 
@@ -204,11 +203,11 @@ agent-rag/
 │   ├── agents/                 # Agent 实现
 │   │   ├── __init__.py
 │   │   ├── master.py           # Master Agent 主控代理
-│   │   ├── worker_base.py      # Worker 基类
-│   │   ├── worker_retrieval.py # 检索 Worker
-│   │   ├── worker_sql.py       # SQL Worker
-│   │   ├── worker_websearch.py # 网络搜索 Worker
-│   │   └── worker_generation.py# 生成 Worker
+│   │   ├── agent_base.py       # Agent 基类
+│   │   ├── retrieval_agent.py  # 检索 Agent
+│   │   ├── sql_agent.py        # SQL Agent
+│   │   ├── resource_agent.py   # 资源处理 Agent
+│   │   └── (其他 Agent 扩展)
 │   │
 │   ├── services/               # 服务层
 │   │   ├── __init__.py
@@ -449,18 +448,19 @@ CREATE TABLE inspirations (
 
 ### Phase 2: Worker 实现（2-3 周）
 
-1. 实现 `BaseWorker` 基类和工具注册机制
-2. 实现 `RetrievalWorker`（文献检索）
-3. 实现 `SQLWorker`（数据库查询）
-4. 实现 `WebSearchWorker`（MCP 网络搜索）
-5. 实现 `GenerationWorker`（答案生成）
+1. 实现 `BaseAgent` 基类和工具注册机制
+2. 实现 `RetrievalAgent`（文献检索）
+3. 实现 `SQLAgent`（数据库查询）
+4. 实现 `ResourceAgent`（资源处理）
+5. 实现 `WebSearchAgent`（MCP 网络搜索，可选）
 
 ### Phase 3: Master Agent（1-2 周）
 
 1. 实现意图分析和任务规划
-2. 实现 Worker 调度机制
-3. 实现结果整合和自反思
-4. 实现多轮对话上下文管理
+2. 实现 Worker 调度机制（将各 Agent 注册为工具）
+3. 实现结果整合和答案生成
+4. 实现自反思和质量控制
+5. 实现多轮对话上下文管理
 
 ### Phase 4: 功能完善（2-3 周）
 
