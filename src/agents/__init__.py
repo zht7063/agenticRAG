@@ -10,11 +10,12 @@ agents 模块 - Agent 实现
 - GenerationWorker: 生成 Worker，负责答案生成和文献综述
 """
 
-from .master import MasterAgent
+# 暂时注释掉，master.py 中尚未定义 MasterAgent
+# from .master import MasterAgent
 from .worker_base import BaseWorker
 
 __all__ = [
-    "MasterAgent",
+    # "MasterAgent",
     "BaseWorker",
 ]
 

@@ -93,8 +93,19 @@ class HTMLToolkit(BaseToolkit)  :
 
         return text
     
+
     def get_splits(self, url: str) -> List[Document]:
-        """ 对文本进行两阶段分块处理 """
+        """ 对文本进行两阶段分块处理 
+        
+        params:
+        - url: str
+            url 地址
+        
+        returns:
+        - List[Document]
+            splits[Document] 列表，可以直接添加到向量存储库中。
+
+        """
         self.url = url
 
         html_text = self._get_response_text()
