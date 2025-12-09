@@ -16,8 +16,8 @@
 
 使用方式：
 1. 在项目根目录的 .env 文件中配置 OPENAI_API_KEY、OPENAI_BASE_URL 和 OPENAI_MODEL
-2. 创建各个 Worker Agent 实例（sql_worker、retrieval_agent、resource_agent）
-3. 创建 MasterAgent 实例，传入上述 Worker
+2. 确保 config/settings.py 中的配置正确（数据库路径、向量存储配置等）
+3. 创建 MasterAgent 实例，系统会自动创建所有 Worker Agent（sql_worker、RetrievalAgent、ResourceAgent）
 4. 调用 execute 方法，传入用户问题，即可获得完整的回答
 """
 
@@ -27,10 +27,22 @@ from langchain.chat_models import init_chat_model
 from langchain_core.tools import tool
 from langchain_core.messages import HumanMessage
 from typing import List, Dict, Any
+from langchain_openai import OpenAIEmbeddings
+from langchain_chroma import Chroma
 
 import os
 from dotenv import load_dotenv
 from loguru import logger
+from config.settings import (
+    SQLITE_DB_PATH,
+    CHROMA_COLLECTION_NAME,
+    CHROMA_PERSIST_DIRECTORY,
+    OPENAI_API_KEY,
+    OPENAI_BASE_URL
+)
+from .sql_agent import sql_worker
+from .retrieval_agent import RetrievalAgent
+from .resource_agent import ResourceAgent
 
 load_dotenv()
 
@@ -85,25 +97,18 @@ class MasterAgent(BaseAgent):
     """
     主控代理
     
-    负责用户交互、Worker 调度和答案生成
+    负责用户交互、Worker 调度和答案生成。
+    在初始化时自动创建所有 Worker Agent（sql_worker、RetrievalAgent、ResourceAgent），
+    配置从 config/settings.py 读取。
     """
     
-    def __init__(self, sql_worker=None, retrieval_agent=None, resource_agent=None):
+    def __init__(self):
         """
         初始化主控代理
         
-        Args:
-            sql_worker: SQL Agent 实例，用于数据库查询
-            retrieval_agent: Retrieval Agent 实例，用于文档检索
-            resource_agent: Resource Agent 实例，用于资源处理
-        
-        注意：至少需要提供一个 Worker Agent
+        自动创建所有 Worker Agent（sql_worker、RetrievalAgent、ResourceAgent），
+        配置从 config/settings.py 读取。
         """
-        # 保存 Worker 引用
-        self.sql_worker = sql_worker
-        self.retrieval_agent = retrieval_agent
-        self.resource_agent = resource_agent
-        
         # 从环境变量获取配置
         api_key = os.getenv("OPENAI_API_KEY")
         base_url = os.getenv("OPENAI_BASE_URL")
@@ -119,11 +124,31 @@ class MasterAgent(BaseAgent):
             api_key=api_key,
         )
         
+        # 创建 Embeddings 实例（用于向量存储）
+        embeddings = OpenAIEmbeddings(
+            api_key=api_key,
+            base_url=base_url
+        )
+        
+        # 创建 Chroma 向量存储实例
+        vector_store = Chroma(
+            collection_name=CHROMA_COLLECTION_NAME,
+            embedding_function=embeddings,
+            persist_directory=CHROMA_PERSIST_DIRECTORY
+        )
+        
+        # 将 SQLite 路径转换为 URI 格式
+        db_uri = f"sqlite:///{SQLITE_DB_PATH}"
+        
+        # 创建所有 Worker Agent
+        self.sql_worker = sql_worker(db_url=db_uri)
+        self.retrieval_agent = RetrievalAgent(vector_store=vector_store)
+        self.resource_agent = ResourceAgent(vector_store=vector_store)
+        
+        logger.info("已创建所有 Worker Agent：sql_worker、RetrievalAgent、ResourceAgent")
+        
         # 创建工具列表
         self.tools = self._create_tools()
-        
-        if not self.tools:
-            logger.warning("未提供任何 Worker Agent，Master Agent 将只能直接回答问题")
         
         # 创建 Agent
         self.agent = create_agent(
